@@ -68,11 +68,11 @@ function createTmpArray(gl, type, n) {
 
 function packAttributes(gl, numVertices, attributes) {
   var attrNames = []
-  var attrBuffers = []
+  var attrVals = []
   for(var name in attributes) {
     var attr = attributes[name]
     var buffer, type, normalized, size
-    if(attr.length) {
+    if(typeof attr.length === "number") {
       if(attr.length !== numVertices) {
         throw new Error("Incorrect vertex count for attribute " + name)
       }
@@ -160,7 +160,23 @@ function packAttributesFromNDArray(gl, numVertices, attributes, elements) {
   var n = elements.shape[0]|0
   var d = elements.shape[1]|0
   var numElements = (n*d)|0
-  
+  var attrNames, attrVals
+  for(var name in attributes) {
+    var attr = attributes[name]
+    if(typeof attr.length === "number") {
+      if(attr[0].length !== numVertices) {
+        throw new Error("Invalid attribute size for attribute " + name)
+      }
+    } else if(attr.shape) {
+    
+    } else {
+      throw new Error("Invalid attribute " + name)
+    }
+  }
+  return {
+    names: attrNames,
+    values: attrVals
+  }
 }
 
 function packAttributesFrom1DArray(gl, numVertices, attributes, elements) {
@@ -176,7 +192,7 @@ function packAttributesFrom1DArray(gl, numVertices, attributes, elements) {
 
 function packAttributesFromArray(gl, numVertices, attributes, elements) {
   var n = elements.length|0
-  var d = elements[0].length|)
+  var d = elements[0].length|0
   var ptr = 0
   var buf = pool.mallocUint32(n*d)
   for(var i=0; i<n; ++i) {
@@ -338,7 +354,7 @@ function createMesh(gl, elements, attributes) {
     return buildMeshObject(gl, mode, element_count, element_buffer, packAttributes(gl, numVertices, attributes))
     
   } else {
-    //Otherwise we use gl.drawArrays
+    //Otherwise we have to use gl.drawArrays, and so the mesh needs to be repacked
     if(elements instanceof Array) {
       if(typeof elements[0] === "number") {
         return buildMeshObject(gl, mode, elements.length, null, packAttributesFrom1DArray(gl, numVertices, attributes, elements))
