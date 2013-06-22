@@ -1,0 +1,51 @@
+{
+  "name": "gl-mesh",
+  "version": "0.0.0",
+  "description": "Static indexed mesh drawing for WebGL",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "dependencies": {
+    "gl-vao": "~0.0.1",
+    "ndarray-ops": "~0.1.3",
+    "typedarray-pool": "~0.1.1",
+    "webglew": "~0.0.0",
+    "ndarray": "~0.2.4",
+    "gl-buffer": "~0.0.0"
+  },
+  "devDependencies": {
+    "gl-now": "~0.0.0",
+    "simple-2d-shader": "~0.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/mikolalysenko/gl-mesh.git"
+  },
+  "keywords": [
+    "webgl",
+    "mesh",
+    "static",
+    "indexed",
+    "triangle",
+    "point",
+    "line",
+    "wrapper",
+    "gl",
+    "drawing",
+    "cell",
+    "complex",
+    "simplicial",
+    "complex"
+  ],
+  "author": "Mikola Lysenko",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "529cb8e9b5634304847a3e0f810db777c1235986",
+  "bugs": {
+    "url": "https://github.com/mikolalysenko/gl-mesh/issues"
+  }
+}
