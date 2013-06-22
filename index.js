@@ -116,6 +116,10 @@ function packAttributes(gl, numVertices, attributes) {
       if(attr.shape[0] !== numVertices) {
         throw new Error("Invalid shape for attribute " + name)
       }
+      //Convert 1D array to 2D
+      if(attr.shape.length === 1) {
+        attr = ndarray(attr.data, [attr.shape[0], 1], [attr.stride[0], 1], attr.offset)
+      }
       //Check if type is compatible
       var packed = true
       type = getGLType(gl, attr.data)
@@ -163,15 +167,103 @@ function packAttributesFromNDArray(gl, numVertices, attributes, elements) {
   var attrNames, attrVals
   for(var name in attributes) {
     var attr = attributes[name]
+    var type, size, normalized, buffer
     if(typeof attr.length === "number") {
       if(attr[0].length !== numVertices) {
         throw new Error("Invalid attribute size for attribute " + name)
       }
+      if(typeof attr[0] === "number") {
+        //Case: 1D array attribute
+        size = 1
+        type = getGLType(gl, attr)
+        var pack_buf
+        if(!type) {
+          type = gl.FLOAT
+        }
+        normalized = (type === gl.BYTE || gl.UNSIGNED_BYTE)
+        pack_buf = createTmpArray(gl, type, numElements)
+        var ptr = 0
+        for(var i=0; i<n; ++i) {
+          for(var j=0; j<d; ++j) {
+            pack_buf[ptr++] = attr[elements.get(i,j)]
+          }
+        }
+        buffer = createBuffer(gl, pack_buf.subarray(0, ptr))
+        pool.free(pack_buf)
+      } else {
+        //Case: Array-of-arrays attribute
+        size = attr[0].length|0
+        if(size < 1 || size > 4) {
+          throw new Error("Invalid attribute size for attribute " + name)
+        }
+        type = gl.FLOAT
+        normalized = false
+        var pack_buf = pool.mallocFloat32(numElements * size)
+        var ptr = 0
+        for(var i=0; i<n; ++i) {
+          for(var j=0; j<d; ++j) {
+            var vert = attr[elements.get(i,j)]
+            for(var k=0; k<size; ++k) {
+              pack_buf[ptr++] = vert[k]
+            }
+          }
+        }
+        buffer = createBuffer(gl, pack_buf.subarray(0, numElements*size))
+        pool.freeFloat32(pack_buf)
+      }
     } else if(attr.shape) {
-    
+      //Case: ndarray attribute
+      if(attr.shape[0] !== numVertices) {
+        throw new Error("Invalid number of vertices for attribute " + name)
+      }
+      if(attr.shape.length === 1) {
+        //Case: 1D ndarray
+        size = 1
+        type = getGLType(gl, array.data)
+        if(!type) {
+          type = gl.FLOAT
+        }
+        normalized = (type === gl.BYTE || type === gl.UNSIGNED_BYTE)
+        var pack_buf = createTmpArray(gl, type, numElements)
+        var ptr = 0
+        for(var i=0; i<n; ++i) {
+          for(var j=0; j<d; ++j) {
+            pack_buf[ptr++] = attr.get(elements.get(i,j))
+          }
+        }
+        buffer = createBuffer(gl, pack_buf.subarray(0, ptr))
+        pool.free(pack_buf)
+      } else if(attr.shape.length === 2) {
+        //Case: 2D ndarray
+        size = attr.shape[1]|0
+        if(size < 1 || size > 4) {
+          throw new Error("Invalid attribute size for attribute " + name)
+        }
+        type = getGLType(gl, array.data)
+        if(!type) {
+          type = gl.FLOAT
+        }
+        normalized = (type === gl.BYTE || gl.UNSIGNED_BYTE)
+        var pack_buf = createTmpArray(gl, type, numElements * size)
+        var ptr = 0
+        for(var i=0; i<n; ++i) {
+          for(var j=0; j<d; ++j) {
+            var vert_num = elements.get(i,j)
+            for(var k=0; k<size; ++k) {
+              pack_buf[ptr++] = attr.get(vert_num, k)
+            }
+          }
+        }
+        buffer = createBuffer(gl, pack_buf.subarray(0, ptr))
+        pool.free(pack_buf)
+      } else {
+        throw new Error("Invalid attribute " + name + ", shape is too big")
+      }
     } else {
-      throw new Error("Invalid attribute " + name)
+      throw new Error("Invalid attribute " + name + ", unrecognized type")
     }
+    attrNames.push(name)
+    attrVals.push(new MeshAttribute(buffer, size, type, normalized))
   }
   return {
     names: attrNames,
