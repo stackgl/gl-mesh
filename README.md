@@ -6,6 +6,8 @@ WebGL class for rendering static indexed geometry
 
 # Example
 
+[Try this demo in your browser](http://mikolalysenko.github.io/gl-mesh/)
+
 ```javascript
 var shell = require("gl-now")()
 var createMesh = require("gl-mesh")
