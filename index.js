@@ -22,25 +22,56 @@ EmptyMesh.prototype.unbind = function() {}
 EmptyMesh.prototype.draw = function() {}
 
 
-function MeshAttribute(name, buffer, size, type, normalized) {
-  this.name = name
+function MeshAttribute(buffer, size, type, normalized) {
   this.buffer = buffer
   this.size = size
   this.type = type
   this.normalized = normalized
 }
 
-
 function getGLType(gl, array) {
-
+  if((array instanceof Uint8Array) ||
+     (array instanceof Uint8ClampedArray)) {
+    return gl.UNSIGNED_BYTE
+  } else if(array instanceof Int8Array) {
+    return gl.BYTE
+  } else if(array instanceof Uint16Array) {
+    return gl.UNSIGNED_SHORT
+  } else if(array instanceof Int16Array) {
+    return gl.SHORT
+  } else if(array instanceof Uint32Array) {
+    return gl.UNSIGNED_INT
+  } else if(array instanceof Int32Array) {
+    return gl.INT
+  } else if(array instanceof Float32Array) {
+    return gl.FLOAT
+  }
+  return 0
 }
 
+function createTmpArray(gl, type, n) {
+  if(type === gl.UNSIGNED_BYTE) {
+    return pool.mallocUint8(n)
+  } else if(type === gl.BYTE) {
+    return pool.mallocInt8(n)
+  } else if(type === gl.UNSIGNED_SHORT) {
+    return pool.mallocUint16(n)
+  } else if(type === gl.SHORT) {
+    return pool.mallocInt16(n)
+  } else if(type === gl.UNSIGNED_INT) {
+    return pool.mallocUint32(n)
+  } else if(type === gl.INT) {
+    return pool.mallocInt32(n)
+  }
+  return pool.mallocFloat32(n)
+}
 
 function packAttributes(gl, numVertices, attributes) {
-  var result = []
+  var attrNames = []
+  var attrBuffers = []
   for(var name in attributes) {
     var attr = attributes[name]
-    var buffer, type, normalized
+    var buffer, type, normalized, size
     if(attr.length) {
       if(attr.length !== numVertices) {
         throw new Error("Incorrect vertex count for attribute " + name)
@@ -49,8 +80,9 @@ function packAttributes(gl, numVertices, attributes) {
         var gltype = getGLType(attr)
         if(gltype) {
           //Case: typed array
+          size = 1
           type = gltype
-          normalized = !(gltype === gl.BYTE || gltype === gl.UNSIGNED_BYTE)
+          normalized = (gltype === gl.BYTE || gltype === gl.UNSIGNED_BYTE)
           buffer = createBuffer(gl, attr)
         } else {
           //Case: native array of numbers
@@ -58,6 +90,7 @@ function packAttributes(gl, numVertices, attributes) {
           for(var i=0; i<numVertices; ++i) {
             tmp_buf[i] = attr[i]
           }
+          size = 1
           type = gl.FLOAT
           normalized = false
           buffer = createBuffer(gl, tmp_buf.subarray(0, numVertices))
@@ -65,12 +98,12 @@ function packAttributes(gl, numVertices, attributes) {
         }
       } else if(attr[0].length) {
         //Case: native array of arrays
-        var d = attr[0].length
+        size = attr[0].length|0
         var ptr = 0
-        var tmp_buf = pool.mallocFloat32(d * numVertices)
+        var tmp_buf = pool.mallocFloat32(size * numVertices)
         for(var i=0; i<numVertices; ++i) {
           var vert = attr[i]
-          for(var j=0; j<d; ++j) {
+          for(var j=0; j<size; ++j) {
             tmp_buf[ptr++] = vert[j]
           }
         }
@@ -80,12 +113,47 @@ function packAttributes(gl, numVertices, attributes) {
         pool.freeFloat32(tmp_buf)
       }
     } else if(attr.shape) {
-    
+      if(attr.shape[0] !== numVertices) {
+        throw new Error("Invalid shape for attribute " + name)
+      }
+      //Check if type is compatible
+      var packed = true
+      type = getGLType(gl, attr.data)
+      if(!type) {
+        packed = false
+        type = gl.FLOAT
+      }
+      if(stride[0] !== 1 || (shape[1] > 1 && stride[1] !== 1)) {
+        packed = false
+      }
+      //Check if array has to be normalized
+      normalized = (type === gl.BYTE || type === gl.UNSIGNED_BYTE)
+      size = attr.shape[1]
+      if(packed) {
+        //Case: packed ndarray, directly blit into buffer
+        if(attr.offset === 0 && attr.data.length === size*numVertices) {
+          buffer = createBuffer(gl, attr.data)
+        } else {
+          buffer = createBuffer(gl, attr.data.subarray(0, size*numVertices))
+        }
+      } else {
+        //Case: unpacked ndarray, create new array and blit
+        var tmp_buf = createTmpArray(gl, type, size*numVertices)
+        var tmp = ndarray(tmp_buf, attr.shape)
+        ops.assign(tmp, attr)
+        buffer = createBuffer(gl, tmp.data.subarray(0, size*numVertices))
+        pool.free(tmp_buf)
+      }
     } else {
-      throw new Error("Invalid vertex attribute")
+      throw new Error("Invalid vertex attribute " + name)
     }
+    attrNames.push(name)
+    attrVals.push(new MeshAttribute(buffer, size, type, normalized))
   }
-  return result
+  return {
+    names: attrNames,
+    values: attrVals
+  }
 }
 
 function packAttributesFromNDArray(gl, numVertices, attributes, elements) {
@@ -127,13 +195,8 @@ function buildMeshObject(gl, mode, numElements, elements, attributes) {
   if(numElements === 0) {
     return new EmptyMesh(gl)
   }
-  var ext = webglew(gl).OES_vertex_array_object
-  if(ext) {
-    //Handle vertex array object initialization
-    throw new Error("not implemented yet")
-  } else {
-    return new MeshNoVAO(gl, mode, numElements, elements, attributes)
-  }
+  var vao = createVAO(gl, elements, attributes.values)
+  return new Mesh(gl, mode, numElements, vao, elements, attributes.values, attributes.names)
 }
 
 //Creates a mesh
