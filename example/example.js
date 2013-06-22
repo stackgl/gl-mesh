@@ -1,3 +1,5 @@
+"use strict"
+
 var shell = require("gl-now")()
 var createMesh = require("../index.js")
 var simple2DShader = require("simple-2d-shader")

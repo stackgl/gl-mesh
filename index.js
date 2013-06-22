@@ -164,12 +164,12 @@ function packAttributesFromNDArray(gl, numVertices, attributes, elements) {
   var n = elements.shape[0]|0
   var d = elements.shape[1]|0
   var numElements = (n*d)|0
-  var attrNames, attrVals
+  var attrNames = [], attrVals = []
   for(var name in attributes) {
     var attr = attributes[name]
     var type, size, normalized, buffer
     if(typeof attr.length === "number") {
-      if(attr[0].length !== numVertices) {
+      if(attr.length !== numVertices) {
         throw new Error("Invalid attribute size for attribute " + name)
       }
       if(typeof attr[0] === "number") {
