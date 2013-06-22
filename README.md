@@ -34,7 +34,7 @@ shell.on("gl-render", function(t) {
 
 And here is what it should look like:
 
-<img src=images/screenshot.png>
+<img src=https://raw.github.com/mikolalysenko/gl-mesh/master/images/screenshot.png>
 
 # Install
 
