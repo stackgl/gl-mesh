@@ -2,8 +2,6 @@ gl-mesh
 =======
 WebGL class for rendering static indexed geometry
 
-**WORK IN PROGRESS**
-
 # Example
 
 [Try this demo in your browser](http://mikolalysenko.github.io/gl-mesh/)
