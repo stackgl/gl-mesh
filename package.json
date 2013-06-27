@@ -1,6 +1,6 @@
 {
   "name": "gl-mesh",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Static indexed mesh drawing for WebGL",
   "main": "index.js",
   "directories": {
@@ -8,11 +8,11 @@
   },
   "dependencies": {
     "gl-vao": "~0.0.1",
-    "ndarray-ops": "~0.1.3",
+    "ndarray-ops": "~1.1.0",
     "typedarray-pool": "~0.1.1",
     "webglew": "~0.0.0",
-    "ndarray": "~0.2.4",
-    "gl-buffer": "~0.0.0"
+    "ndarray": "~1.0.0",
+    "gl-buffer": "~0.1.0"
   },
   "devDependencies": {
     "gl-now": "~0.0.0",
